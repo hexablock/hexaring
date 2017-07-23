@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package hexaring;
+
+import "github.com/hexablock/go-chord/net.proto";
+
+service LookupRPC {
+    rpc LookupRPC(LookupRequest) returns (LookupResponse) {}
+    rpc LookupHashRPC(LookupRequest) returns (LookupResponse) {}
+    rpc LookupReplicatedRPC(LookupRequest) returns (LookupResponse) {}
+    rpc LookupReplicatedHashRPC(LookupRequest) returns (LookupResponse) {}
+}
+
+message Location {
+    bytes ID = 1;
+    int32 Priority = 2;
+    chord.Vnode Vnode = 3;
+}
+
+message LookupRequest {
+    bytes Key = 1;
+    int32 N  = 2;
+}
+
+message LookupResponse {
+    repeated Location Locations = 1;
+    repeated chord.Vnode Vnodes = 2;
+}
