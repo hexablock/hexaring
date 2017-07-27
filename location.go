@@ -3,13 +3,66 @@ package hexaring
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 )
 
+var errNotFound = errors.New("not found")
+
+// LocationSet is a set of locations responsible for a key.
+type LocationSet []*Location
+
+// NaturalRange returns the hash range for the natural key hash
+func (locs LocationSet) NaturalRange() (start []byte, end []byte) {
+	start = locs[0].ID
+	end = locs[1].ID
+	return
+}
+
+// EndRange returns the ending range for the given starting location id.  It returns an
+// error if the location is not in the set
+func (locs LocationSet) EndRange(locID []byte) (end []byte, err error) {
+	for i, v := range locs {
+		if equalBytes(v.ID, locID) {
+			if i == len(locs)-1 {
+				end = locs[0].ID
+			} else {
+				end = locs[i+1].ID
+			}
+			return
+		}
+	}
+
+	err = fmt.Errorf("location not in set: %x", locID)
+	return
+}
+
+// GetByHost returns a location by the given host or a not found error otherwise
+func (locs LocationSet) GetByHost(host string) (*Location, error) {
+	for _, v := range locs {
+		if v.Vnode.Host == host {
+			return v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("location not found for host: %s", host)
+}
+
 // MarshalJSON is a custom Location json marshaller
-func (loc *Location) MarshalJSON() ([]byte, error) {
+func (loc Location) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"ID":       hex.EncodeToString(loc.ID),
 		"Priority": loc.Priority,
 		"Vnode":    loc.Vnode,
 	})
+}
+
+// assumes equal length
+func equalBytes(a, b []byte) bool {
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

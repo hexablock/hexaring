@@ -25,13 +25,10 @@ type Config struct {
 // Ring is a node part of the chord ring allowing to perform ring operations.  This is
 // used on peers participating in the ring.
 type Ring struct {
-	*chord.Ring
-
-	conf *Config
-	// Transport used by chord
-	trans *chord.GRPCTransport
-	// Service to serve lookup ring lookup requests
-	lookupService *NetTransport
+	*chord.Ring                        // Underlying chord ring
+	conf          *Config              // Hexaring config
+	trans         *chord.GRPCTransport // Transport used by chord
+	lookupService *NetTransport        // Serve up ring operations
 }
 
 // DefaultConfig returns a sane config
@@ -52,17 +49,8 @@ func newRing(conf *Config, server *grpc.Server) *Ring {
 	}
 }
 
-// Vnodes returns all vnodes for a given host.  If host is empty string, local vnodes are
-// returned.
-func (r *Ring) Vnodes(host string) ([]*chord.Vnode, error) {
-	if host == "" {
-		return r.trans.ListVnodes(r.conf.Hostname)
-	}
-	return r.trans.ListVnodes(host)
-}
-
 // LookupReplicated returns vnodes where a key and n replicas are located.
-func (r *Ring) LookupReplicated(key []byte, n int) ([]*Location, error) {
+func (r *Ring) LookupReplicated(key []byte, n int) (LocationSet, error) {
 	h := r.conf.HashFunc()
 	h.Write(key)
 	sh := h.Sum(nil)
@@ -72,7 +60,7 @@ func (r *Ring) LookupReplicated(key []byte, n int) ([]*Location, error) {
 // LookupReplicatedHash returns vnodes where a key and n replicas are located.
 // Each replica returned is a unique node.  It returns a n error if the lookup fails or
 // enough unique nodes are not found.
-func (r *Ring) LookupReplicatedHash(hash []byte, n int) ([]*Location, error) {
+func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 
 	hashes := CalculateRingVertexBytes(hash, int64(n))
 	locations := map[string]*Location{}
@@ -99,7 +87,7 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) ([]*Location, error) {
 	}
 
 	// Re-arrange by highest priority first
-	locs := make([]*Location, n)
+	locs := make(LocationSet, n)
 	for _, v := range locations {
 		locs[v.Priority] = v
 	}

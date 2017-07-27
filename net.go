@@ -6,10 +6,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	chord "github.com/hexablock/go-chord"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	"github.com/hexablock/go-chord"
 )
 
 type rpcOutConn struct {
@@ -108,6 +108,15 @@ func (client *NetClient) LookupReplicatedHash(host string, hash []byte, n int32)
 // Shutdown stops reaping connections and disabled getting any new connections
 func (client *NetClient) Shutdown() {
 	atomic.StoreInt32(&client.shutdown, 1)
+	// Close all the outbound
+	client.mu.Lock()
+	for _, conns := range client.pool {
+		for _, out := range conns {
+			out.conn.Close()
+		}
+	}
+	client.pool = nil
+	client.mu.Unlock()
 }
 
 func (client *NetClient) getConn(host string) (*rpcOutConn, error) {
@@ -202,7 +211,7 @@ func (trans *NetTransport) LookupReplicatedRPC(ctx context.Context, req *LookupR
 	return resp, err
 }
 
-// LookupReplicatedHashRPC services a LookupReplicatedHash request
+// LookupReplicatedHashRPC serves a LookupReplicatedHash request
 func (trans *NetTransport) LookupReplicatedHashRPC(ctx context.Context, req *LookupRequest) (*LookupResponse, error) {
 	resp := &LookupResponse{}
 	var err error

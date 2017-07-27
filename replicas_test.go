@@ -67,3 +67,16 @@ func TestCalculateRingVertexes_8(t *testing.T) {
 	}
 
 }
+
+func Test_replicasWithFault(t *testing.T) {
+	faulty := 1
+	if replicasWithFault(faulty) != 4 {
+		t.Fatal("wrong count")
+	}
+	if votesWithFault(faulty) != 3 {
+		t.Fatal("wrong count")
+	}
+	if commitsWithFault(faulty) != 2 {
+		t.Fatal("wrong count")
+	}
+}

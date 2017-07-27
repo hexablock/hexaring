@@ -60,7 +60,7 @@ func TestNetTransport(t *testing.T) {
 		t.Fatal("should have 3 vnodes")
 	}
 
-	// allow reap
+	// Allow reap
 	<-time.After(3 * time.Second)
 
 	client.Shutdown()
@@ -68,4 +68,5 @@ func TestNetTransport(t *testing.T) {
 	if _, err = client.Lookup("127.0.0.1:23456", 3, testkey); err == nil {
 		t.Fatal("should fail with shutdown error")
 	}
+
 }

@@ -91,11 +91,4 @@ func TestRing(t *testing.T) {
 		t.Fatal("should fail")
 	}
 
-	vns1, _ := r1.Vnodes("")
-	vns2, _ := r2.Vnodes("127.0.0.1:33445")
-
-	if len(vns1) != len(vns2) {
-		t.Fatal("different vnode count")
-	}
-
 }
