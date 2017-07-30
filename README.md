@@ -1,4 +1,4 @@
-# hexaring
+# hexaring [![Build Status](https://travis-ci.org/hexablock/hexaring.svg?branch=master)](https://travis-ci.org/hexablock/hexaring)
 Hexaring implements a replicated lookup mechanism on top of chord in order to disassociate
 the ring key mapping from the application keys.  It provides various helper functions to
 perform ring based operations to allow this.
