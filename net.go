@@ -187,6 +187,12 @@ type NetTransport struct {
 	ring *Ring
 }
 
+func NewNetTransport(server *grpc.Server, r *Ring) *NetTransport {
+	trans := &NetTransport{ring: r}
+	RegisterLookupRPCServer(server, trans)
+	return trans
+}
+
 // LookupRPC serves a Lookup request
 func (trans *NetTransport) LookupRPC(ctx context.Context, req *LookupRequest) (*LookupResponse, error) {
 	resp := &LookupResponse{}

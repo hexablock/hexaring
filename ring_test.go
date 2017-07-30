@@ -22,20 +22,23 @@ func fastConf(host string) *Config {
 }
 
 func initTestRing(host string, peers ...string) (*Ring, error) {
-
-	ln, _ := net.Listen("tcp", host)
+	ln, err := net.Listen("tcp", host)
+	if err != nil {
+		return nil, err
+	}
 	server := grpc.NewServer()
-	go server.Serve(ln)
 
 	conf := fastConf(host)
-
-	if len(peers) == 0 {
-		return Create(conf, server)
-	}
 
 	ps := NewInMemPeerStore()
 	for _, p := range peers {
 		ps.AddPeer(p)
+	}
+
+	go server.Serve(ln)
+
+	if len(peers) == 0 {
+		return Create(conf, ps, server)
 	}
 
 	return RetryJoin(conf, ps, server)

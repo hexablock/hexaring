@@ -27,6 +27,7 @@ type Config struct {
 type Ring struct {
 	*chord.Ring                        // Underlying chord ring
 	conf          *Config              // Hexaring config
+	peers         PeerStore            // store containing known peers
 	trans         *chord.GRPCTransport // Transport used by chord
 	lookupService *NetTransport        // Serve up ring operations
 }
@@ -44,11 +45,15 @@ func DefaultConfig(hostname string) *Config {
 	return cfg
 }
 
-func newRing(conf *Config, server *grpc.Server) *Ring {
-	return &Ring{
+func newRing(conf *Config, peers PeerStore, server *grpc.Server) *Ring {
+	r := &Ring{
 		conf:  conf,
+		peers: peers,
 		trans: chord.NewGRPCTransport(server, conf.RPCTimeout, conf.MaxConnIdle),
 	}
+	r.lookupService = NewNetTransport(server, r)
+
+	return r
 }
 
 // LookupReplicated returns vnodes where a key and n replicas are located.
@@ -108,21 +113,20 @@ func (r *Ring) NumSuccessors() int {
 }
 
 // Create creates a new ring based on the config
-func Create(conf *Config, server *grpc.Server) (*Ring, error) {
-	r := newRing(conf, server)
+func Create(conf *Config, peers PeerStore, server *grpc.Server) (*Ring, error) {
+	r := newRing(conf, peers, server)
 
 	ring, err := chord.Create(r.conf.Config, r.trans)
 	if err == nil {
 		r.Ring = ring
-		r.lookupService = &NetTransport{r}
-		RegisterLookupRPCServer(server, r.lookupService)
 	}
+
 	return r, err
 }
 
 // Join tries to join an existing ring using any of the peers from the PeerStore.
 func Join(conf *Config, peerStore PeerStore, server *grpc.Server) (*Ring, error) {
-	r := newRing(conf, server)
+	r := newRing(conf, peerStore, server)
 	err := joinRing(r, peerStore, server)
 	return r, err
 }
@@ -132,7 +136,7 @@ func RetryJoin(conf *Config, peerStore PeerStore, server *grpc.Server) (*Ring, e
 
 	retryInSec := 2
 	tries := 0
-	r := newRing(conf, server)
+	r := newRing(conf, peerStore, server)
 
 	for {
 		tries++
@@ -163,8 +167,6 @@ func joinRing(r *Ring, peerStore PeerStore, server *grpc.Server) error {
 		ring, err := chord.Join(r.conf.Config, r.trans, peer)
 		if err == nil {
 			r.Ring = ring
-			r.lookupService = &NetTransport{r}
-			RegisterLookupRPCServer(server, r.lookupService)
 			return nil
 		}
 		log.Printf("[ERROR] Failed to connect peer=%s msg='%v'", peer, err)
