@@ -39,8 +39,9 @@ func DefaultConfig(hostname string) *Config {
 		RPCTimeout:  3 * time.Second,
 		MaxConnIdle: 5 * time.Minute,
 	}
+	cfg.NumVnodes = 5                   // lowered from 8
 	cfg.StabilizeMin = 10 * time.Second // lowered from 15
-	cfg.StabilizeMax = 20 * time.Second // lowered from 45
+	cfg.StabilizeMax = 15 * time.Second // lowered from 45
 
 	return cfg
 }
