@@ -40,4 +40,24 @@ func TestLocation(t *testing.T) {
 	if !equalBytes(end3, locs3[1].ID) {
 		t.Fatal("wrong range")
 	}
+
+	next1, err := locs3.GetNext(locs3[1].Vnode.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next1.Vnode.StringID() != locs3[2].Vnode.StringID() {
+		t.Fatal("wrong location")
+	}
+
+	next2, err := locs3.GetNext(locs3[2].Vnode.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next2.Vnode.StringID() != locs3[0].Vnode.StringID() {
+		t.Fatal("wrong location")
+	}
+
+	if _, err = locs3.GetNext("host"); err == nil {
+		t.Fatal("shoud error")
+	}
 }

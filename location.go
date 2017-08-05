@@ -45,7 +45,23 @@ func (locs LocationSet) GetByHost(host string) (*Location, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("location not found for host: %s", host)
+	return nil, fmt.Errorf("host not in set: %s", host)
+}
+
+// GetNext returns the next location after the given host
+func (locs LocationSet) GetNext(host string) (*Location, error) {
+	for i, v := range locs {
+		if v.Vnode.Host == host {
+			// Return first elem if the host is the last one
+			if i == len(locs)-1 {
+				return locs[0], nil
+			}
+			// Return the next location
+			return locs[i+1], nil
+		}
+	}
+
+	return nil, fmt.Errorf("host not in set: %s", host)
 }
 
 // MarshalJSON is a custom Location json marshaller
