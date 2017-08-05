@@ -95,3 +95,62 @@ func TestRing(t *testing.T) {
 	}
 
 }
+
+func TestRing_Orbit(t *testing.T) {
+	r1, err := initTestRing("127.0.0.1:12445")
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-time.After(100 * time.Millisecond)
+
+	// Test for first peer non-existent
+	r2, err := initTestRing("127.0.0.1:22556", "127.0.0.1:12445")
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-time.After(100 * time.Millisecond)
+
+	r3, err := initTestRing("127.0.0.1:22566", "127.0.0.1:12445")
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-time.After(100 * time.Millisecond)
+
+	key := []byte("some-data")
+
+	var c1 int
+	o1, err := r1.Orbit(key, 3, func(vn *chord.Vnode) error {
+		c1++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var c2 int
+	o2, err := r2.Orbit(key, 3, func(vn *chord.Vnode) error {
+		c2++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var c3 int
+	o3, err := r3.Orbit(key, 3, func(vn *chord.Vnode) error {
+		c3++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c1 != c2 || c2 != c3 || c3 != c1 {
+		t.Fatal("orbit count mismatch")
+	}
+
+	if o1 != c1 || o2 != c2 || o3 != c3 {
+		t.Fatal("orbit count mismatch")
+	}
+
+}

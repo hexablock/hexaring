@@ -112,6 +112,54 @@ func (r *Ring) NumSuccessors() int {
 	return r.conf.NumSuccessors
 }
 
+// Orbit finds the replca hash locations for the given key and traverses each location up
+// to the allowed number of succesors, issuing the callback for each node.  If the callback
+// returns an error, orbitting is immediately exited.  If returns the number of nodes
+// visited and/or an error.
+func (r *Ring) Orbit(key []byte, replicas int, cb func(*chord.Vnode) error) (int, error) {
+	locs, err := r.LookupReplicated(key, replicas)
+	if err != nil {
+		return 0, err
+	}
+
+	visited := map[string]struct{}{}
+
+	// Query the replica locations first
+	for _, loc := range locs {
+		visited[loc.Vnode.Host] = struct{}{}
+		// Return if callback returns an error
+		if err = cb(loc.Vnode); err != nil {
+			return len(visited), err
+		}
+	}
+
+	// Query succesors of each replica location
+	for _, loc := range locs {
+		// Get succesors of location
+		vns, er := r.LookupHash(r.conf.NumSuccessors, loc.ID)
+		if er != nil {
+			err = er
+			continue
+		}
+
+		// Query each successor
+		for _, vn := range vns[1:] {
+			// Skip if we've visted
+			if _, ok := visited[vn.Host]; ok {
+				continue
+			}
+			visited[vn.Host] = struct{}{}
+
+			// Return if callback returns an error
+			if err = cb(vn); err != nil {
+				return len(visited), err
+			}
+		}
+	}
+
+	return len(visited), err
+}
+
 // Create creates a new ring based on the config
 func Create(conf *Config, peers PeerStore, server *grpc.Server) (*Ring, error) {
 	r := newRing(conf, peers, server)
