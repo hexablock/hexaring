@@ -21,8 +21,9 @@ type rpcOutConn struct {
 
 // NetClient provides RPC calls to the ring
 type NetClient struct {
-	mu           sync.RWMutex
-	pool         map[string][]*rpcOutConn
+	mu   sync.RWMutex
+	pool map[string]*rpcOutConn
+
 	maxIdle      time.Duration
 	reapInterval time.Duration
 	shutdown     int32
@@ -32,7 +33,7 @@ type NetClient struct {
 // time as an argument
 func NewNetClient(reapInterval, maxIdle time.Duration) *NetClient {
 	cl := &NetClient{
-		pool:         make(map[string][]*rpcOutConn),
+		pool:         make(map[string]*rpcOutConn),
 		maxIdle:      maxIdle,
 		reapInterval: reapInterval,
 	}
@@ -110,45 +111,43 @@ func (client *NetClient) Shutdown() {
 	atomic.StoreInt32(&client.shutdown, 1)
 	// Close all the outbound
 	client.mu.Lock()
-	for _, conns := range client.pool {
-		for _, out := range conns {
-			out.conn.Close()
-		}
+	for _, out := range client.pool {
+		out.conn.Close()
 	}
 	client.pool = nil
 	client.mu.Unlock()
 }
 
 func (client *NetClient) getConn(host string) (*rpcOutConn, error) {
-	// Check if we have a conn cached
-	var out *rpcOutConn
-	client.mu.Lock()
+
 	if atomic.LoadInt32(&client.shutdown) == 1 {
-		client.mu.Unlock()
 		return nil, fmt.Errorf("transport is shutdown")
 	}
 
-	list, ok := client.pool[host]
-	if ok && len(list) > 0 {
-		out = list[len(list)-1]
-		list = list[:len(list)-1]
-		client.pool[host] = list
+	// Check if we have a conn cached
+	client.mu.RLock()
+	if out, ok := client.pool[host]; ok && out != nil {
+		defer client.mu.RUnlock()
+		return out, nil
 	}
-	client.mu.Unlock()
+	client.mu.RUnlock()
+
 	// Make a new connection
-	if out == nil {
-		conn, err := grpc.Dial(host, grpc.WithInsecure())
-		if err == nil {
-			return &rpcOutConn{
-				host:   host,
-				client: NewLookupRPCClient(conn),
-				conn:   conn,
-				used:   time.Now(),
-			}, nil
-		}
+	conn, err := grpc.Dial(host, grpc.WithInsecure())
+	if err != nil {
 		return nil, err
 	}
-	// return an existing connection
+
+	client.mu.Lock()
+	out := &rpcOutConn{
+		host:   host,
+		client: NewLookupRPCClient(conn),
+		conn:   conn,
+		used:   time.Now(),
+	}
+	client.pool[host] = out
+	client.mu.Unlock()
+
 	return out, nil
 }
 
@@ -165,18 +164,11 @@ func (client *NetClient) reapOld() {
 func (client *NetClient) reapOnce() {
 	client.mu.Lock()
 
-	for host, conns := range client.pool {
-		max := len(conns)
-		for i := 0; i < max; i++ {
-			if time.Since(conns[i].used) > client.maxIdle {
-				conns[i].conn.Close()
-				conns[i], conns[max-1] = conns[max-1], nil
-				max--
-				i--
-			}
+	for host, conn := range client.pool {
+		if time.Since(conn.used) > client.maxIdle {
+			conn.conn.Close()
+			delete(client.pool, host)
 		}
-		// Trim any idle conns
-		client.pool[host] = conns[:max]
 	}
 
 	client.mu.Unlock()
