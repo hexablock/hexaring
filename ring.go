@@ -1,6 +1,7 @@
 package hexaring
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"time"
@@ -113,9 +114,70 @@ func (r *Ring) NumSuccessors() int {
 	return r.conf.NumSuccessors
 }
 
+// ScourReplica scours all nodes between start and end hashes issueing the callback for
+// the chosen vnodes.  It skips nodes that have already been visited.
+func (r *Ring) ScourReplica(start, end []byte, cb func(*chord.Vnode) error) (int, error) {
+	var (
+		cfunc func(a, b []byte) int
+		max   = maxHash(len(start))
+		zero  = make([]byte, len(start))
+	)
+
+	p := bytes.Compare(start, end)
+	if p == 0 {
+		return 0, fmt.Errorf("nothing to scour")
+	} else if p > 0 {
+		// Start > end
+		cfunc = func(a, b []byte) int {
+			if ((bytes.Compare(a, start) >= 0) && (bytes.Compare(a, max) <= 0)) ||
+				((bytes.Compare(a, zero) >= 0) && (bytes.Compare(a, b) < 0)) {
+				return -1
+			}
+			return 1
+		}
+	} else {
+		// Start < end
+		cfunc = func(a, b []byte) int { return bytes.Compare(a, b) }
+	}
+
+	// Proceed as normal where start < end
+	visited := map[string]struct{}{}
+	lkh := start
+	for {
+
+		vns, err := r.LookupHash(r.conf.NumSuccessors, lkh)
+		if err != nil {
+			return len(visited), err
+		}
+
+		for _, vn := range vns {
+			if cfunc(vn.Id, end) > 0 {
+				return len(visited), nil
+			}
+
+			// Skip if we've visted
+			if _, ok := visited[vn.Host]; ok {
+				continue
+			}
+
+			// Mark as visited
+			visited[vn.Host] = struct{}{}
+
+			// Return if callback returns an error
+			if err = cb(vn); err != nil {
+				return len(visited), err
+			}
+		}
+
+		lkh = vns[len(vns)-1].Id
+
+	}
+}
+
 // Scour traverses each location up to the allowed number of succesors, issueing the
-// callback for each node.  If the callback returns an error, it is immediately exits.  It
-// returns the number of nodes visited and/or an error either from the lookup or callback.
+// callback for each node.  It skips nodes that have already been visited. If the callback
+// returns an error, it is immediately exits.  It returns the number of nodes visited
+// and/or an error either from the lookup or callback.
 func (r *Ring) Scour(locs LocationSet, cb func(*chord.Vnode) error) (int, error) {
 	// Visited hosts
 	visited := map[string]struct{}{}

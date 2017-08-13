@@ -101,6 +101,7 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	//vns1, _ := r1.trans.ListVnodes("127.0.0.1:12445")
 	<-time.After(100 * time.Millisecond)
 
 	// Test for first peer non-existent
@@ -108,12 +109,14 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	//vns2, _ := r2.trans.ListVnodes("127.0.0.1:22556")
 	<-time.After(100 * time.Millisecond)
 
 	r3, err := initTestRing("127.0.0.1:22566", "127.0.0.1:12445")
 	if err != nil {
 		t.Fatal(err)
 	}
+	//vns3, _ := r3.trans.ListVnodes("127.0.0.1:22566")
 	<-time.After(100 * time.Millisecond)
 
 	key := []byte("some-data")
@@ -146,11 +149,43 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 	}
 
 	if c1 != c2 || c2 != c3 || c3 != c1 {
-		t.Fatal("orbit count mismatch")
+		t.Fatal("scour count mismatch")
 	}
 
 	if o1 != c1 || o2 != c2 || o3 != c3 {
-		t.Fatal("orbit count mismatch")
+		t.Fatal("scour count mismatch")
 	}
 
+	slocs, _ := r1.LookupReplicated([]byte("mykey"), 3)
+	for i, v := range slocs {
+		t.Logf("loc.%d %x\n", i, v.ID)
+	}
+
+	if _, err = r1.ScourReplica(slocs[1].ID, slocs[1].ID, func(*chord.Vnode) error { return nil }); err == nil {
+		t.Fatal("should fail")
+	}
+
+	var c int
+	r2.ScourReplica(slocs[0].ID, slocs[1].ID, func(vn *chord.Vnode) error {
+		c++
+		return nil
+	})
+
+	r3.ScourReplica(slocs[2].ID, slocs[0].ID, func(vn *chord.Vnode) error {
+		c++
+		return nil
+	})
+
+	if c <= 3 {
+		t.Fatal("scour didnt visit required hosts")
+	}
+
+	// Wrap around test
+	vst, _ := r1.ScourReplica(slocs[1].ID, slocs[2].ID, func(vn *chord.Vnode) error {
+		t.Logf("wrap %s\n", vn.Host)
+		return nil
+	})
+	if vst != 3 {
+		t.Fatal("should have visited 3 hosts")
+	}
 }

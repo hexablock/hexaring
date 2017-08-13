@@ -6,7 +6,8 @@ import "math/big"
 // equi-distant from each other except for potentially the last one which may be larger
 func CalculateRingVertexes(hash []byte, count int64) []*big.Int {
 	var circum big.Int
-	circum.Exp(big.NewInt(2), big.NewInt(int64(len(hash)*8)), nil)
+	//circum.SetBytes(maxHash(len(hash)))
+	circum.Exp(big.NewInt(2), big.NewInt(int64(len(hash))*8), nil)
 
 	// Number of sections
 	arcs := big.NewInt(count)
@@ -57,4 +58,12 @@ func votesWithFault(faulty int) int {
 // number of faulty nodes.
 func commitsWithFault(faulty int) int {
 	return faulty + 1
+}
+
+func maxHash(s int) []byte {
+	out := make([]byte, s)
+	for i := range out {
+		out[i] = 0xff
+	}
+	return out
 }
