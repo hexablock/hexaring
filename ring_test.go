@@ -96,7 +96,7 @@ func TestRing(t *testing.T) {
 
 }
 
-func TestRing_Orbit(t *testing.T) {
+func TestRing_ScourReplicatedKey(t *testing.T) {
 	r1, err := initTestRing("127.0.0.1:12445")
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestRing_Orbit(t *testing.T) {
 	key := []byte("some-data")
 
 	var c1 int
-	o1, err := r1.Orbit(key, 3, func(vn *chord.Vnode) error {
+	o1, err := r1.ScourReplicatedKey(key, 3, func(vn *chord.Vnode) error {
 		c1++
 		return nil
 	})
@@ -128,7 +128,7 @@ func TestRing_Orbit(t *testing.T) {
 	}
 
 	var c2 int
-	o2, err := r2.Orbit(key, 3, func(vn *chord.Vnode) error {
+	o2, err := r2.ScourReplicatedKey(key, 3, func(vn *chord.Vnode) error {
 		c2++
 		return nil
 	})
@@ -137,7 +137,7 @@ func TestRing_Orbit(t *testing.T) {
 	}
 
 	var c3 int
-	o3, err := r3.Orbit(key, 3, func(vn *chord.Vnode) error {
+	o3, err := r3.ScourReplicatedKey(key, 3, func(vn *chord.Vnode) error {
 		c3++
 		return nil
 	})

@@ -113,30 +113,25 @@ func (r *Ring) NumSuccessors() int {
 	return r.conf.NumSuccessors
 }
 
-// Orbit finds the replca hash locations for the given key and traverses each location up
-// to the allowed number of succesors, issuing the callback for each node.  If the callback
-// returns an error, orbitting is immediately exited.  If returns the number of nodes
-// visited and/or an error.
-func (r *Ring) Orbit(key []byte, replicas int, cb func(*chord.Vnode) error) (int, error) {
-	locs, err := r.LookupReplicated(key, replicas)
-	if err != nil {
-		return 0, err
-	}
-
+// Scour traverses each location up to the allowed number of succesors, issueing the
+// callback for each node.  If the callback returns an error, it is immediately exits.  It
+// returns the number of nodes visited and/or an error either from the lookup or callback.
+func (r *Ring) Scour(locs LocationSet, cb func(*chord.Vnode) error) (int, error) {
+	// Visited hosts
 	visited := map[string]struct{}{}
-
-	// Query the replica locations first
+	// Query primary replica locations first
 	for _, loc := range locs {
 		visited[loc.Vnode.Host] = struct{}{}
 		// Return if callback returns an error
-		if err = cb(loc.Vnode); err != nil {
+		if err := cb(loc.Vnode); err != nil {
 			return len(visited), err
 		}
 	}
 
+	var err error
 	// Query succesors of each replica location
 	for _, loc := range locs {
-		// Get succesors of location
+		// Get succesors of location.  Continue to the next if we fail
 		vns, er := r.LookupHash(r.conf.NumSuccessors, loc.ID)
 		if er != nil {
 			err = er
@@ -155,10 +150,22 @@ func (r *Ring) Orbit(key []byte, replicas int, cb func(*chord.Vnode) error) (int
 			if err = cb(vn); err != nil {
 				return len(visited), err
 			}
+
 		}
 	}
 
 	return len(visited), err
+}
+
+// ScourReplicatedKey finds the replca hash locations for the given key and calls Scour on
+// each location.  This is a helper function to Scour.
+func (r *Ring) ScourReplicatedKey(key []byte, replicas int, cb func(*chord.Vnode) error) (int, error) {
+	locs, err := r.LookupReplicated(key, replicas)
+	if err != nil {
+		return 0, err
+	}
+
+	return r.Scour(locs, cb)
 }
 
 // Create creates a new ring based on the config
