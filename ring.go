@@ -114,9 +114,9 @@ func (r *Ring) NumSuccessors() int {
 	return r.conf.NumSuccessors
 }
 
-// ScourReplica scours all nodes between start and end hashes issueing the callback for
+// ScourSector scours all nodes between start and end hashes issueing the callback for
 // the chosen vnodes.  It skips nodes that have already been visited.
-func (r *Ring) ScourReplica(start, end []byte, cb func(*chord.Vnode) error) (int, error) {
+func (r *Ring) ScourSector(start, end []byte, cb func(*chord.Vnode) error) (int, error) {
 	var (
 		cfunc func(a, b []byte) int
 		max   = maxHash(len(start))
@@ -172,6 +172,31 @@ func (r *Ring) ScourReplica(start, end []byte, cb func(*chord.Vnode) error) (int
 		lkh = vns[len(vns)-1].Id
 
 	}
+}
+
+// ScourReplica scours a replica location id upto the allowable number of vnodes.
+func (r *Ring) ScourReplica(locID []byte, cb func(*chord.Vnode) error) (int, error) {
+	visited := map[string]struct{}{}
+	vns, err := r.LookupHash(r.conf.NumSuccessors, locID)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, vn := range vns {
+		// Skip if we've visted
+		if _, ok := visited[vn.Host]; ok {
+			continue
+		}
+		visited[vn.Host] = struct{}{}
+
+		// Return if callback returns an error
+		if err = cb(vn); err != nil {
+			return len(visited), err
+		}
+
+	}
+
+	return len(visited), nil
 }
 
 // Scour traverses each location up to the allowed number of succesors, issueing the

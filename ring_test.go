@@ -161,17 +161,17 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 		t.Logf("loc.%d %x\n", i, v.ID)
 	}
 
-	if _, err = r1.ScourReplica(slocs[1].ID, slocs[1].ID, func(*chord.Vnode) error { return nil }); err == nil {
+	if _, err = r1.ScourSector(slocs[1].ID, slocs[1].ID, func(*chord.Vnode) error { return nil }); err == nil {
 		t.Fatal("should fail")
 	}
 
 	var c int
-	r2.ScourReplica(slocs[0].ID, slocs[1].ID, func(vn *chord.Vnode) error {
+	r2.ScourSector(slocs[0].ID, slocs[1].ID, func(vn *chord.Vnode) error {
 		c++
 		return nil
 	})
 
-	r3.ScourReplica(slocs[2].ID, slocs[0].ID, func(vn *chord.Vnode) error {
+	r3.ScourSector(slocs[2].ID, slocs[0].ID, func(vn *chord.Vnode) error {
 		c++
 		return nil
 	})
@@ -181,7 +181,7 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 	}
 
 	// Wrap around test
-	vst, _ := r1.ScourReplica(slocs[1].ID, slocs[2].ID, func(vn *chord.Vnode) error {
+	vst, _ := r1.ScourSector(slocs[1].ID, slocs[2].ID, func(vn *chord.Vnode) error {
 		t.Logf("wrap %s\n", vn.Host)
 		return nil
 	})
