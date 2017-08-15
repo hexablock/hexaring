@@ -34,10 +34,19 @@ func CalculateRingVertexes(hash []byte, count int64) []*big.Int {
 
 // CalculateRingVertexBytes returns the a slice of bytes one for each vertex
 func CalculateRingVertexBytes(hash []byte, count int64) [][]byte {
+	lh := len(hash)
 	vertexes := CalculateRingVertexes(hash, count)
 	out := make([][]byte, len(vertexes))
+
 	for i, v := range vertexes {
-		out[i] = v.Bytes()
+		b := v.Bytes()
+		lb := len(b)
+		// Account for modulo.  Padd required zeros
+		if lb < lh {
+			p := make([]byte, lh-lb)
+			b = append(p, b...)
+		}
+		out[i] = b
 	}
 	return out
 }
