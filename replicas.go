@@ -1,6 +1,9 @@
 package hexaring
 
-import "math/big"
+import (
+	"hash"
+	"math/big"
+)
 
 // CalculateRingVertexes returns the requested number of vertexes around the ring
 // equi-distant from each other except for potentially the last one which may be larger
@@ -34,8 +37,11 @@ func CalculateRingVertexes(hash []byte, count int64) []*big.Int {
 
 // CalculateRingVertexBytes returns the a slice of bytes one for each vertex
 func CalculateRingVertexBytes(hash []byte, count int64) [][]byte {
+	// Hash size used when produces hashes are smaller.
 	lh := len(hash)
+	// Big int values of hashes
 	vertexes := CalculateRingVertexes(hash, count)
+	// Binary representation
 	out := make([][]byte, len(vertexes))
 
 	for i, v := range vertexes {
@@ -49,6 +55,14 @@ func CalculateRingVertexBytes(hash []byte, count int64) [][]byte {
 		out[i] = b
 	}
 	return out
+}
+
+// BuildReplicaHashes hashes the given key and build the required additional hashes
+// returning the requested count of hashes.
+func BuildReplicaHashes(key []byte, count int64, h hash.Hash) [][]byte {
+	h.Write(key)
+	sh := h.Sum(nil)
+	return CalculateRingVertexBytes(sh[:], count)
 }
 
 // replicasWithFault returns the number of replicas required in order to tolerate the
