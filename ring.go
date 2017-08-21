@@ -47,7 +47,7 @@ func DefaultConfig(hostname string) *Config {
 	return cfg
 }
 
-func newRing(conf *Config, peers PeerStore, server *grpc.Server) *Ring {
+func New(conf *Config, peers PeerStore, server *grpc.Server) *Ring {
 	r := &Ring{
 		conf:  conf,
 		peers: peers,
@@ -255,31 +255,26 @@ func (r *Ring) ScourReplicatedKey(key []byte, replicas int, cb func(*chord.Vnode
 	return r.Scour(locs, cb)
 }
 
-// Create creates a new ring based on the config
-func Create(conf *Config, peers PeerStore, server *grpc.Server) (*Ring, error) {
-	r := newRing(conf, peers, server)
-
+// Create creates a new ring.  This is only to be called once.
+func (r *Ring) Create() error {
 	ring, err := chord.Create(r.conf.Config, r.trans)
 	if err == nil {
 		r.Ring = ring
 	}
-
-	return r, err
+	return err
 }
 
 // Join tries to join an existing ring using any of the peers from the PeerStore.
-func Join(conf *Config, peerStore PeerStore, server *grpc.Server) (*Ring, error) {
-	r := newRing(conf, peerStore, server)
-	err := joinRing(r, peerStore, server)
-	return r, err
+func (r *Ring) Join() error {
+	return joinRing(r, r.peers)
 }
 
-// RetryJoin implements exponential backoff rejoin.
-func RetryJoin(conf *Config, peerStore PeerStore, server *grpc.Server) (*Ring, error) {
+// RetryJoin keeps looping through the available peers to join.  It implements a backoff
+// for each retry
+func (r *Ring) RetryJoin() error {
 
 	retryInSec := 2
 	tries := 0
-	r := newRing(conf, peerStore, server)
 
 	for {
 		tries++
@@ -288,9 +283,9 @@ func RetryJoin(conf *Config, peerStore PeerStore, server *grpc.Server) (*Ring, e
 			retryInSec *= retryInSec
 		}
 		// Try each set of peers
-		err := joinRing(r, peerStore, server)
+		err := joinRing(r, r.peers)
 		if err == nil {
-			return r, nil
+			return nil
 		}
 		log.Printf("Failed to connect msg='%v'", err)
 
@@ -301,7 +296,8 @@ func RetryJoin(conf *Config, peerStore PeerStore, server *grpc.Server) (*Ring, e
 
 }
 
-func joinRing(r *Ring, peerStore PeerStore, server *grpc.Server) error {
+// helper for join and retry-join
+func joinRing(r *Ring, peerStore PeerStore) error {
 
 	peers := peerStore.Peers()
 	for _, peer := range peers {

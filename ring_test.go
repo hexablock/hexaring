@@ -35,13 +35,15 @@ func initTestRing(host string, peers ...string) (*Ring, error) {
 		ps.AddPeer(p)
 	}
 
+	r := New(conf, ps, server)
+
 	go server.Serve(ln)
 
 	if len(peers) == 0 {
-		return Create(conf, ps, server)
+		return r, r.Create()
 	}
 
-	return RetryJoin(conf, ps, server)
+	return r, r.RetryJoin()
 }
 
 func TestRing(t *testing.T) {
