@@ -179,6 +179,7 @@ type NetTransport struct {
 	ring *Ring
 }
 
+// NewNetTransport instantiates a new network transport to serve client ring requests
 func NewNetTransport(server *grpc.Server, r *Ring) *NetTransport {
 	trans := &NetTransport{ring: r}
 	RegisterLookupRPCServer(server, trans)

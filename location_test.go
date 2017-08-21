@@ -41,7 +41,7 @@ func TestLocation(t *testing.T) {
 		t.Fatal("wrong range")
 	}
 
-	next1, err := locs3.GetNext(locs3[1].Vnode.Host)
+	next1, err := locs3.GetNext(locs3[1].Host())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestLocation(t *testing.T) {
 		t.Fatal("wrong location")
 	}
 
-	next2, err := locs3.GetNext(locs3[2].Vnode.Host)
+	next2, err := locs3.GetNext(locs3[2].Host())
 	if err != nil {
 		t.Fatal(err)
 	}

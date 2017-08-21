@@ -64,6 +64,11 @@ func (locs LocationSet) GetNext(host string) (*Location, error) {
 	return nil, fmt.Errorf("host not in set: %s", host)
 }
 
+// Host returns the host of the location
+func (loc *Location) Host() string {
+	return loc.Vnode.Host
+}
+
 // MarshalJSON is a custom Location json marshaller
 func (loc Location) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
