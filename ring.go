@@ -40,10 +40,10 @@ func DefaultConfig(hostname string) *Config {
 		RPCTimeout:  3 * time.Second,
 		MaxConnIdle: 5 * time.Minute,
 	}
-	cfg.NumVnodes = 5                   // lowered from 8
-	cfg.StabilizeMin = 10 * time.Second // lowered from 15
-	cfg.StabilizeMax = 15 * time.Second // lowered from 45
-
+	cfg.NumVnodes = 5                  // lowered from 8
+	cfg.StabilizeMin = 3 * time.Second // lowered from 15
+	cfg.StabilizeMax = 7 * time.Second // lowered from 45
+	//cfg.StabilizeThresh = 30 * time.Second // enables adaptive stabilization
 	return cfg
 }
 
@@ -90,6 +90,7 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 			}
 		}
 	}
+
 	// Check if we have the requested number of replicas
 	if len(locations) != n {
 		return nil, fmt.Errorf("not enough hosts found")

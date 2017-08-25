@@ -18,6 +18,7 @@ func fastConf(host string) *Config {
 	conf.Meta = chord.Meta{"key": []byte("test")}
 	conf.StabilizeMin = time.Duration(15 * time.Millisecond)
 	conf.StabilizeMax = time.Duration(45 * time.Millisecond)
+	conf.StabilizeThresh = time.Duration(30 * time.Millisecond)
 	return conf
 }
 
@@ -119,7 +120,7 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	//vns3, _ := r3.trans.ListVnodes("127.0.0.1:22566")
-	<-time.After(100 * time.Millisecond)
+	<-time.After(200 * time.Millisecond)
 
 	key := []byte("some-data")
 

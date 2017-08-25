@@ -24,9 +24,18 @@ func TestLocation(t *testing.T) {
 	}
 	<-time.After(100 * time.Millisecond)
 
-	locs1, _ := r1.LookupReplicated(testkey, 3)
-	locs2, _ := r2.LookupReplicated(testkey, 3)
-	locs3, _ := r3.LookupReplicated(testkey, 3)
+	locs1, err := r1.LookupReplicated(testkey, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locs2, err := r2.LookupReplicated(testkey, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locs3, err := r3.LookupReplicated(testkey, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	end1, _ := locs1.EndRange(locs1[2].ID)
 	if !equalBytes(end1, locs1[0].ID) {
