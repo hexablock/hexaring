@@ -13,8 +13,12 @@ service LookupRPC {
 
 message Location {
     bytes ID = 1;
+    // Priority among locations in a set
     int32 Priority = 2;
-    chord.Vnode Vnode = 3;
+    // Index within location group
+    int32 Index = 3;
+    // Vnode for location id
+    chord.Vnode Vnode = 4;
 }
 
 message LookupRequest {

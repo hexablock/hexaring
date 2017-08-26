@@ -83,9 +83,14 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 			return nil, err
 		}
 		// Go through each successor selecting the first one by host that we do not have.
-		for _, vn := range vs {
+		for j, vn := range vs {
 			if _, ok := locations[vn.Host]; !ok {
-				locations[vn.Host] = &Location{ID: h, Vnode: vn, Priority: int32(i)}
+				locations[vn.Host] = &Location{
+					ID:       h,
+					Priority: int32(i),
+					Index:    int32(j),
+					Vnode:    vn,
+				}
 				break
 			}
 		}

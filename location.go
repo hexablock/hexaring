@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/hexablock/go-chord"
 )
 
 var errNotFound = errors.New("not found")
@@ -71,10 +73,16 @@ func (loc *Location) Host() string {
 
 // MarshalJSON is a custom Location json marshaller
 func (loc Location) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"ID":       hex.EncodeToString(loc.ID),
-		"Priority": loc.Priority,
-		"Vnode":    loc.Vnode,
+	return json.Marshal(struct {
+		ID       string
+		Priority int32
+		Index    int32
+		Vnode    *chord.Vnode
+	}{
+		ID:       hex.EncodeToString(loc.ID),
+		Priority: loc.Priority,
+		Index:    loc.Index,
+		Vnode:    loc.Vnode,
 	})
 }
 
