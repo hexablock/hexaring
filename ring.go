@@ -47,6 +47,7 @@ func DefaultConfig(hostname string) *Config {
 	return cfg
 }
 
+// New instantiates a new ring
 func New(conf *Config, peers PeerStore, server *grpc.Server) *Ring {
 	r := &Ring{
 		conf:  conf,
@@ -81,8 +82,7 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Go through each successor selecting the first one by host that we do not
-		// have..
+		// Go through each successor selecting the first one by host that we do not have.
 		for _, vn := range vs {
 			if _, ok := locations[vn.Host]; !ok {
 				locations[vn.Host] = &Location{ID: h, Vnode: vn, Priority: int32(i)}
