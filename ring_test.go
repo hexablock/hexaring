@@ -36,7 +36,8 @@ func initTestRing(host string, peers ...string) (*Ring, error) {
 		ps.AddPeer(p)
 	}
 
-	r := New(conf, ps, server)
+	r := New(conf, ps, 2*time.Second, 1*time.Minute)
+	r.RegisterServer(server)
 
 	go server.Serve(ln)
 

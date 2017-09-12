@@ -48,15 +48,23 @@ func DefaultConfig(hostname string) *Config {
 }
 
 // New instantiates a new ring
-func New(conf *Config, peers PeerStore, server *grpc.Server) *Ring {
+func New(conf *Config, peers PeerStore, rpcTimeout, maxConnIdle time.Duration) *Ring {
 	r := &Ring{
 		conf:  conf,
 		peers: peers,
-		trans: chord.NewGRPCTransport(server, conf.RPCTimeout, conf.MaxConnIdle),
+		trans: chord.NewGRPCTransport(rpcTimeout, maxConnIdle),
 	}
-	r.lookupService = NewNetTransport(server, r)
+	r.lookupService = NewNetTransport(r)
 
 	return r
+}
+
+// RegisterServer registers the underlying transport to the grpc server
+func (r *Ring) RegisterServer(server *grpc.Server) {
+	// Register chord transport
+	r.trans.RegisterServer(server)
+	// Register hexing lookup service
+	r.lookupService.RegisterServer(server)
 }
 
 // LookupReplicated returns vnodes where a key and n replicas are located.

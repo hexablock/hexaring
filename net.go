@@ -180,10 +180,14 @@ type NetTransport struct {
 }
 
 // NewNetTransport instantiates a new network transport to serve client ring requests
-func NewNetTransport(server *grpc.Server, r *Ring) *NetTransport {
-	trans := &NetTransport{ring: r}
+func NewNetTransport(r *Ring) *NetTransport {
+	return &NetTransport{ring: r}
+	//RegisterLookupRPCServer(server, trans)
+	//return trans
+}
+
+func (trans *NetTransport) RegisterServer(server *grpc.Server) {
 	RegisterLookupRPCServer(server, trans)
-	return trans
 }
 
 // LookupRPC serves a Lookup request
