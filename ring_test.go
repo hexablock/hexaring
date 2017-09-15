@@ -13,11 +13,12 @@ import (
 
 var testkey = []byte("testkey")
 
-func fastConf(host string) *Config {
+func fastConf(host string) *chord.Config {
 	conf := DefaultConfig(host)
 	conf.Meta = chord.Meta{"key": []byte("test")}
 	conf.StabilizeMin = time.Duration(15 * time.Millisecond)
 	conf.StabilizeMax = time.Duration(45 * time.Millisecond)
+	// enabled adaptive stabilization
 	conf.StabilizeThresh = time.Duration(30 * time.Millisecond)
 	return conf
 }
@@ -36,7 +37,9 @@ func initTestRing(host string, peers ...string) (*Ring, error) {
 		ps.AddPeer(p)
 	}
 
-	r := New(conf, ps, 2*time.Second, 1*time.Minute)
+	trans := chord.NewGRPCTransport(2*time.Second, 1*time.Minute)
+
+	r := New(conf, ps, trans)
 	r.RegisterServer(server)
 
 	go server.Serve(ln)

@@ -16,30 +16,32 @@ var errNoPeersFound = errors.New("no peers found")
 
 // Config contains the configuration options for the chord ring.  It augments the
 // default configuration for convenience
-type Config struct {
-	*chord.Config
+// type Config struct {
+// 	*chord.Config
 
-	RPCTimeout  time.Duration
-	MaxConnIdle time.Duration
-}
+// 	RPCTimeout  time.Duration
+// 	MaxConnIdle time.Duration
+// }
+//
 
 // Ring is a node part of the chord ring allowing to perform ring operations.  This is
 // used on peers participating in the ring.
 type Ring struct {
 	*chord.Ring                        // Underlying chord ring
-	conf          *Config              // Hexaring config
+	conf          *chord.Config        // Hexaring config
 	peers         PeerStore            // store containing known peers
 	trans         *chord.GRPCTransport // Transport used by chord
 	lookupService *NetTransport        // Serve up ring operations
 }
 
 // DefaultConfig returns a sane config
-func DefaultConfig(hostname string) *Config {
-	cfg := &Config{
-		Config:      chord.DefaultConfig(hostname),
-		RPCTimeout:  3 * time.Second,
-		MaxConnIdle: 5 * time.Minute,
-	}
+func DefaultConfig(hostname string) *chord.Config {
+	// cfg := &Config{
+	// 	Config:      chord.DefaultConfig(hostname),
+	// 	RPCTimeout:  3 * time.Second,
+	// 	MaxConnIdle: 5 * time.Minute,
+	// }
+	cfg := chord.DefaultConfig(hostname)
 	cfg.NumVnodes = 5                  // lowered from 8
 	cfg.StabilizeMin = 3 * time.Second // lowered from 15
 	cfg.StabilizeMax = 7 * time.Second // lowered from 45
@@ -48,11 +50,13 @@ func DefaultConfig(hostname string) *Config {
 }
 
 // New instantiates a new ring
-func New(conf *Config, peers PeerStore, rpcTimeout, maxConnIdle time.Duration) *Ring {
+//func New(conf *Config, peers PeerStore, rpcTimeout, maxConnIdle time.Duration) *Ring {
+func New(conf *chord.Config, peers PeerStore, trans *chord.GRPCTransport) *Ring {
 	r := &Ring{
 		conf:  conf,
 		peers: peers,
-		trans: chord.NewGRPCTransport(rpcTimeout, maxConnIdle),
+		//trans: chord.NewGRPCTransport(rpcTimeout, maxConnIdle),
+		trans: trans,
 	}
 	r.lookupService = NewNetTransport(r)
 
@@ -271,7 +275,7 @@ func (r *Ring) ScourReplicatedKey(key []byte, replicas int, cb func(*chord.Vnode
 
 // Create creates a new ring.  This is only to be called once.
 func (r *Ring) Create() error {
-	ring, err := chord.Create(r.conf.Config, r.trans)
+	ring, err := chord.Create(r.conf, r.trans)
 	if err == nil {
 		r.Ring = ring
 	}
@@ -317,7 +321,7 @@ func joinRing(r *Ring, peerStore PeerStore) error {
 	for _, peer := range peers {
 		log.Printf("[INFO] Trying peer=%s", peer)
 
-		ring, err := chord.Join(r.conf.Config, r.trans, peer)
+		ring, err := chord.Join(r.conf, r.trans, peer)
 		if err == nil {
 			r.Ring = ring
 			return nil
