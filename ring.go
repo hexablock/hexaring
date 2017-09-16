@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -79,10 +80,10 @@ func (r *Ring) LookupReplicated(key []byte, n int) (LocationSet, error) {
 	return r.LookupReplicatedHash(sh[:], n)
 }
 
-// LookupReplicatedHash returns vnodes where a key and n replicas are located.
+// LookupReplicatedHashSerial returns vnodes where a key and n replicas are located.
 // Each replica returned is a unique node.  It returns a n error if the lookup fails or
 // enough unique nodes are not found.
-func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
+func (r *Ring) LookupReplicatedHashSerial(hash []byte, n int) (LocationSet, error) {
 
 	hashes := CalculateRingVertexBytes(hash, int64(n))
 	locations := map[string]*Location{}
@@ -117,6 +118,83 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 	locs := make(LocationSet, n)
 	for _, v := range locations {
 		locs[v.Priority] = v
+	}
+
+	return locs, nil
+}
+
+// LookupReplicatedHash returns vnodes where a key and n replicas are located.  Each
+// replica call is performed in its own go-routine. Each replica returned is a
+// unique node.  It returns a n error if the lookup fails or enough unique nodes are
+// not found.
+func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
+
+	hashes := CalculateRingVertexBytes(hash, int64(n))
+	out := make(chan []*Location, n)
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i, h := range hashes {
+		// Lookup successors for the replicated hash with the maximum allowable
+		// successors.
+		go func(idx int, hsh []byte) {
+
+			vs, err := r.LookupHash(r.conf.NumSuccessors, hsh)
+			if err != nil {
+				log.Println("[ERROR] Lookup failed:", err)
+				//	return nil, err
+				out <- nil
+				return
+			}
+
+			locs := make([]*Location, len(vs))
+			for j, v := range vs {
+				locs[j] = &Location{ID: hsh, Vnode: v, Index: int32(j), Priority: int32(idx)}
+			}
+			out <- locs
+
+			wg.Done()
+
+		}(i, h)
+
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	locations := make([][]*Location, n)
+
+	for la := range out {
+		if la == nil {
+			return nil, fmt.Errorf("not enough hosts found")
+		}
+
+		p := la[0].Priority
+		locations[p] = la
+	}
+
+	locs := make(LocationSet, n)
+	locs[0] = locations[0][0]
+
+	for i, l := range locations[1:] {
+		c := i + 1
+
+		for _, ll := range l {
+			if containsHost(locs[:c], ll.Host()) {
+				continue
+			}
+
+			locs[c] = ll
+			break
+		}
+	}
+
+	for i := n - 1; i >= 0; i-- {
+		if locs[i] == nil {
+			return locs[:i], fmt.Errorf("not enough hosts found")
+		}
 	}
 
 	return locs, nil
@@ -333,4 +411,13 @@ func joinRing(r *Ring, peerStore PeerStore) error {
 	}
 
 	return fmt.Errorf("all peers exhausted")
+}
+
+func containsHost(locs []*Location, host string) bool {
+	for _, v := range locs {
+		if v.Host() == host {
+			return true
+		}
+	}
+	return false
 }

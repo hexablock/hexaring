@@ -97,8 +97,9 @@ func TestRing(t *testing.T) {
 		t.Fatal("id mismatch")
 	}
 
-	if _, err = r1.LookupReplicated(testkey, 3); err == nil {
-		t.Fatal("should fail")
+	reps, err := r1.LookupReplicated(testkey, 3)
+	if err == nil {
+		t.Fatal("should fail", reps)
 	}
 
 }
@@ -195,4 +196,42 @@ func TestRing_ScourReplicatedKey(t *testing.T) {
 	if vst != 3 {
 		t.Fatal("should have visited 3 hosts")
 	}
+
+	// Compare serial and parallel
+	start := time.Now()
+	lset, err := r1.LookupReplicatedHashSerial(slocs[0].ID, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	end := time.Since(start)
+	t.Logf("Serial LookupReplicatedHash: %v", end)
+
+	start = time.Now()
+	lsetC, err := r1.LookupReplicatedHash(slocs[0].ID, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	end = time.Since(start)
+	t.Logf("Concurrent LookupReplicatedHash: %v", end)
+
+	for i, l := range lset {
+		o := lsetC[i]
+
+		if l.Priority != o.Priority {
+			t.Fatal("Priority mismatch", l.Priority, o.Priority)
+		}
+		if l.Index != o.Index {
+			t.Fatal("Index mismatch", l.Index, o.Index)
+		}
+
+		if bytes.Compare(l.ID, o.ID) != 0 {
+			t.Fatal("id mismatch")
+		}
+
+		if bytes.Compare(l.Vnode.Id, o.Vnode.Id) != 0 {
+			t.Fatal("vnode id mismatch")
+		}
+
+	}
+
 }
