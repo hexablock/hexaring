@@ -128,7 +128,6 @@ func (r *Ring) LookupReplicatedHashSerial(hash []byte, n int) (LocationSet, erro
 // unique node.  It returns a n error if the lookup fails or enough unique nodes are
 // not found.
 func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
-
 	hashes := CalculateRingVertexBytes(hash, int64(n))
 	out := make(chan []*Location, n)
 
@@ -165,7 +164,7 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 	}()
 
 	locations := make([][]*Location, n)
-
+	// Sort by priority
 	for la := range out {
 		if la == nil {
 			return nil, fmt.Errorf("not enough hosts found")
@@ -178,19 +177,20 @@ func (r *Ring) LookupReplicatedHash(hash []byte, n int) (LocationSet, error) {
 	locs := make(LocationSet, n)
 	locs[0] = locations[0][0]
 
-	for i, l := range locations[1:] {
-		c := i + 1
-
+	// Update list with uniques by priority
+	c := 1
+	for _, l := range locations[1:] {
 		for _, ll := range l {
 			if containsHost(locs[:c], ll.Host()) {
 				continue
 			}
 
 			locs[c] = ll
+			c++
 			break
 		}
 	}
-
+	// Make sure we have the requested count
 	for i := n - 1; i >= 0; i-- {
 		if locs[i] == nil {
 			return locs[:i], fmt.Errorf("not enough hosts found")

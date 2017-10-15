@@ -14,6 +14,17 @@ var errNotFound = errors.New("not found")
 // LocationSet is a set of locations responsible for a key.
 type LocationSet []*Location
 
+func (locs LocationSet) String() string {
+	buf := []byte("[ ")
+	for _, l := range locs {
+		if l.Vnode != nil {
+			buf = append(buf, []byte(l.Vnode.Host+" ")...)
+		}
+	}
+
+	return string(append(buf, byte(']')))
+}
+
 // NaturalRange returns the hash range for the natural key hash
 func (locs LocationSet) NaturalRange() (start []byte, end []byte) {
 	start = locs[0].ID
